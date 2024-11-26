@@ -12,16 +12,20 @@ else
     INTERFACE=$3
 fi
 
-# 自动提取子网掩码
+# 提取子网掩码
 SUBNET_MASK=$(echo "$PREFIX" | cut -d'/' -f2)
 if [ -z "$SUBNET_MASK" ]; then
     echo "错误: 未提供有效的子网掩码，请检查 IPv6 前缀格式。"
     exit 1
 fi
 
-# 提取固定前缀
-FIXED_SEGMENTS=$((SUBNET_MASK / 16))  # 固定段数
-IFS=: read -r -a PREFIX_PARTS <<< "$(echo "$PREFIX" | cut -d'/' -f1)"
+# 提取固定部分
+NETWORK=$(echo "$PREFIX" | cut -d'/' -f1)
+IFS=: read -r -a PREFIX_PARTS <<< "$NETWORK"
+
+# 计算固定段数和随机段数
+FIXED_SEGMENTS=$((SUBNET_MASK / 16))
+RANDOM_SEGMENTS=$((8 - FIXED_SEGMENTS))
 
 # 补齐固定部分
 FIXED_PARTS=("${PREFIX_PARTS[@]}")
@@ -31,12 +35,9 @@ done
 
 # 检查固定部分是否正确
 if [ "${#FIXED_PARTS[@]}" -ne "$FIXED_SEGMENTS" ]; then
-    echo "错误: IPv6 前缀的固定部分不正确。"
+    echo "错误: 固定部分计算出错，请检查 IPv6 前缀。"
     exit 1
 fi
-
-# 计算随机段数
-RANDOM_SEGMENTS=$((8 - FIXED_SEGMENTS))
 
 # 初始化统计变量
 SUCCESS_COUNT=0
