@@ -28,39 +28,30 @@ if [ "$SUBNET_MASK" -ne 64 ]; then
     exit 1
 fi
 
-# 定义临时文件和统计变量
-TEMP_FILE=$(mktemp)
+# 定义统计变量
 SUCCESS_COUNT=0
 FAIL_COUNT=0
 SUCCESS_LIST=()
 FAIL_LIST=()
 
-# 生成唯一的 IPv6 地址
+# 生成 IPv6 地址列表
 echo "正在生成 $COUNT 个唯一的 IPv6 地址..."
-for ((i=1; i<=COUNT; i++)); do
-    while :; do
-        SUFFIX=$(printf "%x:%x" $((RANDOM%65536)) $((RANDOM%65536)))
-        IP="$NETWORK:$SUFFIX/$SUBNET_MASK"
+GENERATED_IPS=()
+while [ "${#GENERATED_IPS[@]}" -lt "$COUNT" ]; do
+    # 随机生成后缀，每段 4 位
+    SUFFIX=$(printf "%04x:%04x:%04x:%04x" $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)))
+    IP="$NETWORK:$SUFFIX/$SUBNET_MASK"
 
-        # 检查是否已经在文件中
-        if ! grep -q "$IP" "$TEMP_FILE"; then
-            echo "$IP" >> "$TEMP_FILE"
-            break
-        fi
-    done
-
-    # 显示进度条
-    printf "\r生成进度: %d/%d" "$i" "$COUNT"
+    # 确保地址唯一
+    if [[ ! " ${GENERATED_IPS[*]} " =~ " $IP " ]]; then
+        GENERATED_IPS+=("$IP")
+    fi
 done
-echo
+
 echo "地址生成完成，开始添加到网卡 $INTERFACE..."
 
-# 添加 IPv6 地址并记录成功和失败
-TOTAL_LINES=$(wc -l < "$TEMP_FILE")
-CURRENT_LINE=0
-
-while read -r IP; do
-    ((CURRENT_LINE++))
+# 添加 IPv6 地址
+for IP in "${GENERATED_IPS[@]}"; do
     sudo ip addr add "$IP" dev "$INTERFACE" 2>/dev/null
     if [ $? -eq 0 ]; then
         SUCCESS_LIST+=("$IP")
@@ -69,11 +60,7 @@ while read -r IP; do
         FAIL_LIST+=("$IP")
         ((FAIL_COUNT++))
     fi
-
-    # 显示添加进度条
-    printf "\r添加进度: %d/%d" "$CURRENT_LINE" "$TOTAL_LINES"
-done < "$TEMP_FILE"
-echo
+done
 
 # 输出统计结果
 echo "================ 添加完成 ================"
@@ -87,6 +74,3 @@ if [ "$FAIL_COUNT" -gt 0 ]; then
         echo "  $FAIL_IP"
     done
 fi
-
-# 清理临时文件
-rm -f "$TEMP_FILE"
