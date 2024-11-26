@@ -12,13 +12,7 @@ else
     INTERFACE=$3
 fi
 
-# 检查输入是否为空
-if [ -z "$PREFIX" ] || [ -z "$COUNT" ] || [ -z "$INTERFACE" ]; then
-    echo "错误: 所有输入都不能为空，请重新运行脚本。"
-    exit 1
-fi
-
-# 提取 IPv6 前缀的网络部分和长度
+# 提取 IPv6 前缀和子网掩码
 NETWORK=$(echo "$PREFIX" | cut -d'/' -f1 | awk -F'::' '{print $1"::"}')
 SUBNET_MASK=$(echo "$PREFIX" | cut -d'/' -f2)
 
@@ -40,6 +34,9 @@ for ((i=1; i<=COUNT; i++)); do
     SUFFIX=$(printf "%04x:%04x:%04x:%04x" $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)))
     IP="$NETWORK$SUFFIX/$SUBNET_MASK"
 
+    # 输出生成的 IPv6 地址（用于调试）
+    echo "生成地址: $IP"
+
     # 添加到网卡
     sudo ip addr add "$IP" dev "$INTERFACE" 2>/dev/null
     if [ $? -eq 0 ]; then
@@ -47,10 +44,6 @@ for ((i=1; i<=COUNT; i++)); do
     else
         ((FAIL_COUNT++))
     fi
-
-    # 显示进度条
-    PROGRESS=$((i * 100 / COUNT))
-    printf "\r进度: [%-50s] %d%%" "$(printf '%*s' $((PROGRESS / 2)) '' | tr ' ' '#')" "$PROGRESS"
 done
 
 echo
