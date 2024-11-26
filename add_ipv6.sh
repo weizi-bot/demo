@@ -28,49 +28,34 @@ if [ "$SUBNET_MASK" -ne 64 ]; then
     exit 1
 fi
 
-# 定义统计变量
+# 初始化统计变量
 SUCCESS_COUNT=0
 FAIL_COUNT=0
-SUCCESS_LIST=()
-FAIL_LIST=()
+TOTAL=$COUNT
 
-# 生成 IPv6 地址列表
-echo "正在生成 $COUNT 个唯一的 IPv6 地址..."
-GENERATED_IPS=()
-while [ "${#GENERATED_IPS[@]}" -lt "$COUNT" ]; do
+echo "正在生成和添加 $COUNT 个 IPv6 地址，请稍候..."
+
+# 生成并添加 IPv6 地址
+for ((i=1; i<=COUNT; i++)); do
     # 随机生成后缀，每段 4 位
     SUFFIX=$(printf "%04x:%04x:%04x:%04x" $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)))
     IP="$NETWORK:$SUFFIX/$SUBNET_MASK"
 
-    # 确保地址唯一
-    if [[ ! " ${GENERATED_IPS[*]} " =~ " $IP " ]]; then
-        GENERATED_IPS+=("$IP")
-    fi
-done
-
-echo "地址生成完成，开始添加到网卡 $INTERFACE..."
-
-# 添加 IPv6 地址
-for IP in "${GENERATED_IPS[@]}"; do
+    # 添加 IP 地址到网卡
     sudo ip addr add "$IP" dev "$INTERFACE" 2>/dev/null
     if [ $? -eq 0 ]; then
-        SUCCESS_LIST+=("$IP")
         ((SUCCESS_COUNT++))
     else
-        FAIL_LIST+=("$IP")
         ((FAIL_COUNT++))
     fi
+
+    # 更新进度条
+    PROGRESS=$((i * 100 / TOTAL))
+    printf "\r进度: [%-50s] %d%%" "$(printf '%*s' $((PROGRESS / 2)) '' | tr ' ' '#')" "$PROGRESS"
 done
 
-# 输出统计结果
+echo
 echo "================ 添加完成 ================"
 echo "总计生成: $COUNT"
 echo "成功添加: $SUCCESS_COUNT"
 echo "失败添加: $FAIL_COUNT"
-
-if [ "$FAIL_COUNT" -gt 0 ]; then
-    echo "失败的 IP 地址如下:"
-    for FAIL_IP in "${FAIL_LIST[@]}"; do
-        echo "  $FAIL_IP"
-    done
-fi
