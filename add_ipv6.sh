@@ -1,16 +1,15 @@
 #!/bin/bash
 
-# 检查参数
-if [ "$#" -ne 3 ]; then
-    echo "用法: $0 <IPv6前缀> <数量> <网卡名称>"
-    echo "示例: $0 2001:475:35:3f4::6/64 1000 eth0"
+# 手动输入参数
+read -p "请输入 IPv6 前缀 (例如 2001:475:35:3f4::/64): " PREFIX
+read -p "请输入要生成的 IP 数量: " COUNT
+read -p "请输入网卡名称 (例如 eth0): " INTERFACE
+
+# 检查输入是否为空
+if [ -z "$PREFIX" ] || [ -z "$COUNT" ] || [ -z "$INTERFACE" ]; then
+    echo "所有输入都不能为空！请重新运行脚本并提供完整信息。"
     exit 1
 fi
-
-# 参数赋值
-PREFIX=$1          # IPv6 前缀，例如 2001:475:35:3f4::/64
-COUNT=$2           # 要生成的数量，例如 1000
-INTERFACE=$3       # 网卡名称，例如 eth0
 
 # 提取 IPv6 前缀的网络部分
 NETWORK=$(echo "$PREFIX" | cut -d'/' -f1)
@@ -24,8 +23,8 @@ fi
 
 # 生成并添加 IP 地址
 for ((i=1; i<=COUNT; i++)); do
-    # 生成随机后缀
-    SUFFIX=$(printf "%x:%x:%x:%x" $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)))
+    # 生成随机后缀 (只生成 64 位后缀)
+    SUFFIX=$(printf "%x:%x" $((RANDOM%65536)) $((RANDOM%65536)))
 
     # 拼接完整 IPv6 地址
     IP="$NETWORK:$SUFFIX/$SUBNET_MASK"
