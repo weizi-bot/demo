@@ -12,8 +12,8 @@ else
     INTERFACE=$3
 fi
 
-# 提取 IPv6 前缀和子网掩码
-NETWORK=$(echo "$PREFIX" | cut -d'/' -f1 | awk -F'::' '{print $1"::"}')
+# 提取 IPv6 前缀的网络部分和子网掩码
+NETWORK=$(echo "$PREFIX" | cut -d'/' -f1 | awk -F'::' '{print $1}')
 SUBNET_MASK=$(echo "$PREFIX" | cut -d'/' -f2)
 
 # 检查子网掩码是否支持
@@ -31,8 +31,8 @@ echo "正在生成 $COUNT 个 IPv6 地址并添加到网卡 $INTERFACE，请稍�
 # 循环生成 IPv6 地址并添加
 for ((i=1; i<=COUNT; i++)); do
     # 随机生成后缀，每段 4 位
-    SUFFIX=$(printf "%04x:%04x:%04x:%04x" $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)))
-    IP="$NETWORK$SUFFIX/$SUBNET_MASK"
+    RANDOM_SUFFIX=$(printf "%04x:%04x:%04x:%04x" $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)) $((RANDOM%65536)))
+    IP="$NETWORK:$RANDOM_SUFFIX/$SUBNET_MASK"
 
     # 输出生成的 IPv6 地址（用于调试）
     echo "生成地址: $IP"
