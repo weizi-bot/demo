@@ -14,51 +14,45 @@ fi
 
 # 提取子网掩码
 SUBNET_MASK=$(echo "$PREFIX" | cut -d'/' -f2)
-if [ -z "$SUBNET_MASK" ]; then
-    echo "错误: 未提供有效的子网掩码，请检查 IPv6 前缀格式。"
+NETWORK=$(echo "$PREFIX" | cut -d'/' -f1)
+
+# 验证子网掩码
+if [ -z "$SUBNET_MASK" ] || [ "$SUBNET_MASK" -lt 1 ] || [ "$SUBNET_MASK" -gt 128 ]; then
+    echo "错误: 子网掩码格式无效，请检查输入的 IPv6 前缀。"
     exit 1
 fi
 
-# 提取固定部分
-NETWORK=$(echo "$PREFIX" | cut -d'/' -f1)
+# 分割固定前缀为数组
 IFS=: read -r -a PREFIX_PARTS <<< "$NETWORK"
 
-# 计算固定段数和随机段数
+# 初始化完整的 8 段数组
+IPv6_ARRAY=(0 0 0 0 0 0 0 0)
+
+# 填充固定部分到数组中
 FIXED_SEGMENTS=$((SUBNET_MASK / 16))
-RANDOM_SEGMENTS=$((8 - FIXED_SEGMENTS))
-
-# 补齐固定部分
-FIXED_PARTS=("${PREFIX_PARTS[@]}")
-for ((i=${#FIXED_PARTS[@]}; i<FIXED_SEGMENTS; i++)); do
-    FIXED_PARTS+=("0")
+for ((i=0; i<FIXED_SEGMENTS; i++)); do
+    IPv6_ARRAY[$i]=${PREFIX_PARTS[$i]:-0}
 done
-
-# 检查固定部分是否正确
-if [ "${#FIXED_PARTS[@]}" -ne "$FIXED_SEGMENTS" ]; then
-    echo "错误: 固定部分计算出错，请检查 IPv6 前缀。"
-    exit 1
-fi
 
 # 初始化统计变量
 SUCCESS_COUNT=0
 FAIL_COUNT=0
 
-echo "固定前缀: $(IFS=:; echo "${FIXED_PARTS[*]}")"
+echo "固定前缀: $(IFS=:; echo "${IPv6_ARRAY[*]:0:$FIXED_SEGMENTS}")"
 echo "子网掩码: /$SUBNET_MASK"
-echo "随机段数: $RANDOM_SEGMENTS"
+echo "随机段数: $((8 - FIXED_SEGMENTS))"
 
-# 生成随机 IPv6 地址并添加
+# 开始生成随机 IPv6 地址
 for ((i=1; i<=COUNT; i++)); do
-    # 生成随机后缀
-    RANDOM_SUFFIX=""
-    for ((j=1; j<=RANDOM_SEGMENTS; j++)); do
-        RANDOM_SUFFIX+=$(printf ":%04x" $((RANDOM%65536)))
+    # 生成随机部分
+    for ((j=FIXED_SEGMENTS; j<8; j++)); do
+        IPv6_ARRAY[$j]=$(printf "%04x" $((RANDOM % 65536)))
     done
 
-    # 拼接完整地址
-    IP=$(IFS=:; echo "${FIXED_PARTS[*]}")"$RANDOM_SUFFIX/$SUBNET_MASK"
+    # 拼接完整 IPv6 地址
+    IP=$(IFS=:; echo "${IPv6_ARRAY[*]}")/$SUBNET_MASK
 
-    # 输出生成的 IPv6 地址
+    # 输出生成的 IPv6 地址（调试用）
     echo "生成地址: $IP"
 
     # 添加到网卡
