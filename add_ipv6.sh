@@ -1,21 +1,22 @@
 #!/bin/bash
 
-# 手动输入参数
-read -p "请输入 IPv6 前缀 (例如 2001:475:35:3f4::/64): " PREFIX
-read -p "请输入要生成的 IP 数量: " COUNT
-read -p "请输入网卡名称 (例如 eth0): " INTERFACE
-
-# 如果参数不足，则提示输入
+# 如果参数不足，则提示交互式输入
 if [ "$#" -lt 3 ]; then
-    read -p "请输入 IPv6 前缀: " PREFIX
-    read -p "请输入数量: " COUNT
-    read -p "请输入网卡名称: " INTERFACE
+    echo "检测到参数不足，进入交互模式。"
+    read -p "请输入 IPv6 前缀 (例如 2001:475:35:3f4::/64): " PREFIX
+    read -p "请输入要生成的 IP 数量: " COUNT
+    read -p "请输入网卡名称 (例如 eth0): " INTERFACE
 else
     PREFIX=$1
     COUNT=$2
     INTERFACE=$3
 fi
 
+# 检查输入是否为空
+if [ -z "$PREFIX" ] || [ -z "$COUNT" ] || [ -z "$INTERFACE" ]; then
+    echo "所有输入都不能为空！请重新运行脚本并提供完整信息。"
+    exit 1
+fi
 
 # 提取 IPv6 前缀的网络部分
 NETWORK=$(echo "$PREFIX" | cut -d'/' -f1)
