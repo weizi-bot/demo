@@ -12,7 +12,7 @@ else
     INTERFACE=$3
 fi
 
-# 提取子网掩码
+# 自动提取子网掩码
 SUBNET_MASK=$(echo "$PREFIX" | cut -d'/' -f2)
 NETWORK=$(echo "$PREFIX" | cut -d'/' -f1)
 
@@ -43,6 +43,7 @@ echo "子网掩码: /$SUBNET_MASK"
 echo "随机段数: $((8 - FIXED_SEGMENTS))"
 
 # 开始生成随机 IPv6 地址
+echo "正在生成并添加 $COUNT 个 IPv6 地址，请稍候..."
 for ((i=1; i<=COUNT; i++)); do
     # 生成随机部分
     for ((j=FIXED_SEGMENTS; j<8; j++)); do
@@ -52,9 +53,6 @@ for ((i=1; i<=COUNT; i++)); do
     # 拼接完整 IPv6 地址
     IP=$(IFS=:; echo "${IPv6_ARRAY[*]}")/$SUBNET_MASK
 
-    # 输出生成的 IPv6 地址（调试用）
-    echo "生成地址: $IP"
-
     # 添加到网卡
     sudo ip addr add "$IP" dev "$INTERFACE" 2>/dev/null
     if [ $? -eq 0 ]; then
@@ -62,8 +60,13 @@ for ((i=1; i<=COUNT; i++)); do
     else
         ((FAIL_COUNT++))
     fi
+
+    # 更新进度条
+    PROGRESS=$((i * 100 / COUNT))
+    printf "\r进度: [%-50s] %d%%" "$(printf '%*s' $((PROGRESS / 2)) '' | tr ' ' '#')" "$PROGRESS"
 done
 
+# 打印统计结果
 echo
 echo "================ 添加完成 ================"
 echo "总计生成: $COUNT"
